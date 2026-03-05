@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
 export async function PATCH(request, { params }) {
   const { id } = await params;
   const body = await request.json();
-  const { name, quantity, unit, par_level, location_id, category_id } = body;
+  const { name, quantity, unit, par_level, location_id, category_id, expiry_date } = body;
 
   const [item] = await sql`
     UPDATE items SET
@@ -25,7 +25,8 @@ export async function PATCH(request, { params }) {
       unit        = COALESCE(${unit ?? null}, unit),
       par_level   = COALESCE(${par_level ?? null}, par_level),
       location_id = COALESCE(${location_id ?? null}, location_id),
-      category_id = COALESCE(${category_id ?? null}, category_id)
+      category_id = COALESCE(${category_id ?? null}, category_id),
+      expiry_date = CASE WHEN ${Object.hasOwn(body, "expiry_date")} THEN ${expiry_date || null} ELSE expiry_date END
     WHERE item_id = ${id}
     RETURNING *
   `;

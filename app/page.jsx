@@ -33,7 +33,7 @@ const Icon = {
 };
 
 const LOCATION_EMOJI = {
-  Fridge: "❄️", Pantry: "🪴", Freezer: "🧊", "Spice Rack": "🌶️",
+  Fridge: "❄️", Pantry: "🪴", Freezer: "🧊",
 };
 const getLocationEmoji = (name) => LOCATION_EMOJI[name] || "📦";
 
@@ -46,6 +46,7 @@ function ItemModal({ item, locations, categories, activeLocationId, onClose, onS
     par_level: item?.par_level ?? "",
     location_id: item?.location_id ?? activeLocationId ?? "",
     category_id: item?.category_id ?? "",
+    expiry_date: item?.expiry_date ? item.expiry_date.split("T")[0] : "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -71,6 +72,7 @@ function ItemModal({ item, locations, categories, activeLocationId, onClose, onS
           par_level: form.par_level !== "" ? Number(form.par_level) : null,
           location_id: Number(form.location_id),
           category_id: form.category_id !== "" ? Number(form.category_id) : null,
+          expiry_date: form.expiry_date || null,
         }),
       });
       if (!res.ok) throw new Error("Save failed");
@@ -110,6 +112,9 @@ function ItemModal({ item, locations, categories, activeLocationId, onClose, onS
 
           <label style={styles.label}>Par Level <span style={{ color: "#888", fontWeight: 400 }}>(restock when below)</span></label>
           <input style={styles.input} type="number" min="0" step="any" value={form.par_level} onChange={set("par_level")} placeholder="e.g. 1" />
+
+          <label style={styles.label}>Expiry Date</label>
+          <input style={styles.input} type="date" value={form.expiry_date} onChange={set("expiry_date")} />
 
           <label style={styles.label}>Location *</label>
           <select style={styles.input} value={form.location_id} onChange={set("location_id")}>
@@ -168,11 +173,27 @@ function DeleteModal({ item, onClose, onConfirm }) {
   );
 }
 
-// Card for items 
+function formatExpiry(dateStr) {
+  const [y, m, d] = dateStr.split("-");
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${months[Number(m) - 1]} ${Number(d)}, ${y}`;
+}
+
+// Card for items
 function ItemCard({ item, onEdit, onDelete }) {
   const isLow = item.par_level != null && Number(item.quantity) <= Number(item.par_level);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiryDate = item.expiry_date ? new Date(item.expiry_date.split("T")[0] + "T00:00:00") : null;
+  const daysLeft = expiryDate ? Math.round((expiryDate - today) / 86400000) : null;
+  const isExpired = daysLeft !== null && daysLeft < 0;
+  const isExpiringSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7;
+
+  const borderColor = isExpired ? "#e74c3c" : (isLow || isExpiringSoon) ? "#e67e22" : "transparent";
+
   return (
-    <div style={{ ...styles.card, borderColor: isLow ? "#e67e22" : "transparent" }}>
+    <div style={{ ...styles.card, borderColor }}>
       <div style={styles.cardTop}>
         <span style={styles.itemName}>{item.name}</span>
         <div style={styles.cardActions}>
@@ -182,12 +203,24 @@ function ItemCard({ item, onEdit, onDelete }) {
       </div>
       <div style={styles.cardBottom}>
         <span style={styles.qty}>{item.quantity} <span style={styles.unit}>{item.unit}</span></span>
-        {isLow && (
+        {isExpired && (
+          <span style={styles.expiredBadge}>
+            <Icon.Warn /> Expired
+          </span>
+        )}
+        {!isExpired && isLow && (
           <span style={styles.lowBadge}>
             <Icon.Warn /> Low stock
           </span>
         )}
       </div>
+      {item.expiry_date && (
+        <div style={styles.expiryRow}>
+          <span style={{ color: isExpired ? "#e74c3c" : isExpiringSoon ? "#e67e22" : "#555" }}>
+            {isExpired ? "Expired" : isExpiringSoon ? `${daysLeft}d left` : "Expires"} · {formatExpiry(item.expiry_date.split("T")[0])}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -416,6 +449,15 @@ const styles = {
     background: "#2c1a0a", color: "#e67e22",
     fontSize: 11, fontWeight: 600, padding: "3px 8px",
     borderRadius: 20, border: "1px solid #4a2e0e",
+  },
+  expiredBadge: {
+    display: "flex", alignItems: "center", gap: 4,
+    background: "#2c0a0a", color: "#e74c3c",
+    fontSize: 11, fontWeight: 600, padding: "3px 8px",
+    borderRadius: 20, border: "1px solid #4a0e0e",
+  },
+  expiryRow: {
+    marginTop: 8, fontSize: 11, fontWeight: 500,
   },
   empty: {
     flex: 1, display: "flex", flexDirection: "column",
