@@ -90,5 +90,5 @@ The app will be available at `http://localhost:3000`.
 ## Future plans
 
 - Add the ability to create new categories directly from the UI rather than inserting them via SQL
-- Same for locations — being able to add them through the browser would make the app much more self-contained
+- Same for locations, being able to add them through the browser would make the app much more self-contained
 - Shopping list view that surfaces all low-stock items across every location in one place
